@@ -1,0 +1,519 @@
+<!DOCTYPE html>
+<html lang="zh-Hant-TW">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>OriginOS 陸版專用 LINE 錄音助手 v0.11｜安裝教學</title>
+<meta name="description" content="陸版 iQOO／vivo（OriginOS）LINE 通話自動錄音、自動命名。免 Root、免電腦，內建 Shizuku。下載 APK 與完整安裝步驟。">
+<meta property="og:title" content="OriginOS 陸版專用 LINE 錄音助手 v0.11 安裝教學">
+<meta property="og:description" content="LINE 通話自動錄音，掛斷後自動用日期、時間、聯絡人命名。免 Root、免電腦。">
+<meta name="theme-color" content="#F4F6F9">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=LXGW+WenKai+TC:wght@400;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --paper: #F4F6F9;
+    --surface: #FFFFFF;
+    --ink: #172033;
+    --muted: #586377;
+    --rule: #D8DEE8;
+    --signal: #2D5BFF;
+    --signal-deep: #1E43CC;
+    --tint: #E8EEFF;
+    --rec: #E03A3E;
+    --warn-ink: #9E1F23;
+    --warn-tint: #FDEDEE;
+    --hand: "LXGW WenKai TC", "Kaiti TC", "BiauKai", "STKaiti", serif;
+    --sans: -apple-system, "PingFang TC", "Noto Sans TC", "Microsoft JhengHei", "Heiti TC", sans-serif;
+    --mono: ui-monospace, "SF Mono", "Roboto Mono", "Noto Sans Mono", Menlo, monospace;
+    --measure: 40rem;
+  }
+
+  * { box-sizing: border-box; }
+  html { -webkit-text-size-adjust: 100%; scroll-padding-top: 3.5rem; }
+  body {
+    margin: 0;
+    background: var(--paper);
+    color: var(--ink);
+    font-family: var(--sans);
+    font-size: 1.0625rem;
+    line-height: 1.75;
+  }
+  a { color: var(--signal-deep); text-underline-offset: 0.18em; }
+  a:focus-visible, button:focus-visible, summary:focus-visible, input:focus-visible + .tick {
+    outline: 3px solid var(--signal);
+    outline-offset: 3px;
+    border-radius: 6px;
+  }
+  .wrap { max-width: var(--measure); margin: 0 auto; padding: 0 1.25rem; }
+
+  /* ---------- progress bar ---------- */
+  .progress {
+    position: sticky; top: 0; z-index: 10;
+    background: rgba(244, 246, 249, 0.94);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    border-bottom: 1px solid var(--rule);
+  }
+  .progress .wrap {
+    display: flex; align-items: center; gap: 0.75rem;
+    min-height: 2.75rem; font-size: 0.875rem; color: var(--muted);
+  }
+  .progress .track { flex: 1; height: 4px; background: var(--rule); border-radius: 2px; overflow: hidden; }
+  .progress .fill { height: 100%; width: 0; background: var(--signal); transition: width 0.3s ease; }
+  .progress a { color: var(--muted); white-space: nowrap; }
+
+  /* ---------- hero ---------- */
+  .hero { padding: 2.5rem 0 2rem; }
+  .app-name { margin: 0 0 0.5rem; font-size: 0.9375rem; color: var(--muted); }
+  h1, h2, h3 { font-family: var(--hand); font-weight: 700; line-height: 1.3; }
+  h1 { font-size: clamp(2rem, 7.5vw, 2.75rem); margin: 0 0 0.75rem; letter-spacing: 0.01em; }
+  .lede { margin: 0 0 1.75rem; font-size: 1.125rem; color: var(--ink); }
+
+  .specimen {
+    margin: 0 0 2rem;
+    background: var(--surface);
+    border: 1px solid var(--rule);
+    border-radius: 14px;
+    padding: 1rem 1rem 1.1rem;
+  }
+  .specimen .row { display: flex; align-items: flex-start; gap: 0.75rem; }
+  .rec {
+    flex: none; display: inline-flex; align-items: center; gap: 0.35rem;
+    margin-top: 0.35rem;
+    font-family: var(--mono); font-size: 0.75rem; font-weight: 700; color: var(--rec);
+  }
+  .rec::before {
+    content: ""; width: 0.6rem; height: 0.6rem; border-radius: 50%;
+    background: var(--rec);
+    animation: blink 1.6s ease-in-out infinite;
+  }
+  @keyframes blink { 0%, 100% { opacity: 1; } 50% { opacity: 0.2; } }
+  .fname { display: flex; flex-wrap: wrap; row-gap: 0.4rem; font-family: var(--mono); font-size: 1rem; }
+  .seg { display: inline-flex; flex-direction: column; }
+  .seg b { font-weight: 600; white-space: nowrap; }
+  .seg i {
+    font-style: normal; font-family: var(--sans); font-size: 0.75rem; color: var(--muted);
+    border-top: 2px solid var(--rule); margin-top: 0.15rem; padding-top: 0.1rem; margin-right: 1px;
+  }
+  .seg.date i, .seg.time i, .seg.who i { border-top-color: var(--signal); color: var(--signal-deep); }
+  .specimen figcaption { margin-top: 0.85rem; font-size: 0.9375rem; color: var(--muted); }
+
+  .get { display: grid; gap: 0.75rem; }
+  .btn {
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    min-height: 3.75rem; padding: 0.6rem 1rem;
+    background: var(--signal); color: #fff; text-decoration: none;
+    border-radius: 14px; font-weight: 700; font-size: 1.125rem; line-height: 1.3;
+  }
+  .btn:hover { background: var(--signal-deep); }
+  .btn small { font-weight: 400; font-size: 0.8125rem; opacity: 0.9; }
+  .alt { font-size: 0.9375rem; color: var(--muted); margin: 0; }
+  details.hash { font-size: 0.875rem; color: var(--muted); }
+  details.hash summary { cursor: pointer; }
+  details.hash code { display: block; margin-top: 0.4rem; word-break: break-all; font-family: var(--mono); font-size: 0.8125rem; color: var(--ink); background: var(--surface); border: 1px solid var(--rule); border-radius: 8px; padding: 0.5rem 0.65rem; }
+
+  /* ---------- sections ---------- */
+  section { padding: 2rem 0; border-top: 1px solid var(--rule); }
+  h2 { font-size: 1.75rem; margin: 0 0 1rem; }
+  h3 { font-size: 1.25rem; margin: 0; }
+  p { margin: 0 0 1rem; }
+
+  .needs { list-style: none; padding: 0; margin: 0 0 1rem; display: grid; gap: 0.6rem; }
+  .needs li { position: relative; padding-left: 1.6rem; }
+  .needs li::before { content: "✓"; position: absolute; left: 0; color: var(--signal); font-weight: 700; }
+  .nope { font-size: 0.9375rem; color: var(--muted); }
+
+  /* ---------- steps ---------- */
+  .phase { margin: 0 0 0.35rem; font-family: var(--hand); font-size: 1.375rem; font-weight: 700; }
+  .phase-note { margin: 0 0 1.25rem; color: var(--muted); font-size: 0.9375rem; }
+  .steps { list-style: none; margin: 0 0 2.25rem; padding: 0; }
+  .step { position: relative; padding: 0 0 1.75rem 3rem; }
+  .step::before {
+    content: ""; position: absolute; left: 0.95rem; top: 2.1rem; bottom: 0.2rem;
+    width: 2px; background: var(--rule);
+  }
+  .step:last-child::before { display: none; }
+  .step .head { display: flex; align-items: flex-start; gap: 0.75rem; margin-left: -3rem; }
+  .tickwrap { flex: none; cursor: pointer; padding: 0; }
+  .step input { position: absolute; opacity: 0; width: 1px; height: 1px; }
+  .tick {
+    flex: none; width: 2rem; height: 2rem; border-radius: 50%;
+    border: 2px solid var(--rule); background: var(--surface);
+    display: grid; place-items: center; color: transparent; font-weight: 700; font-size: 1rem;
+    transition: background 0.2s, border-color 0.2s;
+  }
+  .step input:checked + .tick { background: var(--signal); border-color: var(--signal); color: #fff; }
+  .step:has(input:checked) .title h3 { color: var(--muted); }
+  .title { padding-top: 0.15rem; }
+  .title .hint { display: block; font-size: 0.8125rem; color: var(--muted); }
+  .appbtn {
+    display: inline-block; padding: 0.15rem 0.6rem; margin-top: 0.15rem;
+    background: var(--tint); color: var(--signal-deep);
+    border-radius: 8px; font-family: var(--sans); font-size: 1rem; font-weight: 700; line-height: 1.5;
+  }
+  .body { margin-top: 0.6rem; }
+  .body > :last-child { margin-bottom: 0; }
+  .body ol, .body ul { margin: 0 0 1rem; padding-left: 1.3rem; }
+  .body li { margin-bottom: 0.45rem; }
+  .ui { font-weight: 700; }
+  .path {
+    display: block; margin: 0.4rem 0 0.75rem; padding: 0.55rem 0.75rem;
+    background: var(--surface); border: 1px solid var(--rule); border-radius: 10px;
+    font-size: 0.9375rem; line-height: 1.6;
+  }
+  .path .cn { display: block; font-size: 0.8125rem; color: var(--muted); }
+  .done { color: var(--muted); font-size: 0.9375rem; }
+  .done b { color: var(--ink); }
+  .warn {
+    background: var(--warn-tint); color: var(--warn-ink);
+    border-radius: 10px; padding: 0.65rem 0.8rem; font-size: 0.9375rem; margin: 0 0 1rem;
+  }
+  code.f { font-family: var(--mono); font-size: 0.875em; background: var(--surface); border: 1px solid var(--rule); border-radius: 5px; padding: 0 0.3em; word-break: break-all; }
+
+  /* ---------- faq ---------- */
+  .faq details { border-bottom: 1px solid var(--rule); }
+  .faq details:first-of-type { border-top: 1px solid var(--rule); }
+  .faq summary {
+    cursor: pointer; list-style: none; padding: 0.9rem 2rem 0.9rem 0; position: relative; font-weight: 700;
+  }
+  .faq summary::-webkit-details-marker { display: none; }
+  .faq summary::after {
+    content: "+"; position: absolute; right: 0.25rem; top: 0.75rem;
+    font-size: 1.4rem; font-weight: 400; color: var(--muted); transition: transform 0.2s;
+  }
+  .faq details[open] summary::after { transform: rotate(45deg); }
+  .faq .a { padding: 0 0 1rem; }
+  .faq .a > :last-child { margin-bottom: 0; }
+
+  /* ---------- footer ---------- */
+  footer { border-top: 1px solid var(--rule); padding: 2rem 0 3rem; font-size: 0.875rem; color: var(--muted); }
+  dl.meta { display: grid; grid-template-columns: auto 1fr; gap: 0.35rem 1rem; margin: 0 0 1.5rem; }
+  dl.meta dt { color: var(--muted); }
+  dl.meta dd { margin: 0; color: var(--ink); word-break: break-all; }
+  dl.meta dd code { font-family: var(--mono); font-size: 0.8125rem; }
+
+  @media (min-width: 40rem) {
+    .hero { padding-top: 3.5rem; }
+    .get { grid-template-columns: 1fr; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .rec::before { animation: none; }
+    .progress .fill, .tick, .faq summary::after { transition: none; }
+  }
+</style>
+</head>
+<body>
+
+<div class="progress" aria-live="polite">
+  <div class="wrap">
+    <span id="progress-text">安裝進度 0 / 9</span>
+    <div class="track" aria-hidden="true"><div class="fill" id="progress-fill"></div></div>
+    <a href="#steps">看步驟</a>
+  </div>
+</div>
+
+<header class="hero">
+  <div class="wrap">
+    <p class="app-name">OriginOS 陸版專用 LINE 錄音助手 v0.11</p>
+    <h1>LINE 通話自動錄音，掛斷就幫你命名好</h1>
+    <p class="lede">給陸版 iQOO／vivo（OriginOS）用。接通時自動叫出手機原廠錄音機開始錄，掛斷後自動停止並改名。免 Root、免電腦，不用另外安裝 Shizuku。</p>
+
+    <figure class="specimen">
+      <div class="row">
+        <span class="rec" aria-hidden="true">REC</span>
+        <div class="fname" aria-label="錄音檔名範例：line_20261123_14點05分32秒_王小明.m4a">
+          <span class="seg"><b>line_</b><i>&nbsp;</i></span>
+          <span class="seg date"><b>20261123</b><i>日期</i></span>
+          <span class="seg time"><b>_14點05分32秒</b><i>時間</i></span>
+          <span class="seg who"><b>_王小明</b><i>LINE 聯絡人</i></span>
+          <span class="seg"><b>.m4a</b><i>&nbsp;</i></span>
+        </div>
+      </div>
+      <figcaption>每通 LINE 電話掛斷後，錄音檔會自動改成這樣的名字，在檔案管理裡一眼就找得到。</figcaption>
+    </figure>
+
+    <div class="get" id="download">
+      <a class="btn" href="OriginOS-LINE-Recorder-v0.11.apk" download>
+        下載 APK
+        <small>v0.11，約 2.9 MB</small>
+      </a>
+      <p class="alt">按了沒反應？改用 <a href="https://github.com/steve19860004/linecallreecorder-apk/raw/main/originos/OriginOS-LINE-Recorder-v0.11.apk">GitHub 備用下載</a>。</p>
+      <details class="hash">
+        <summary>檢查檔案是否完整（SHA-256）</summary>
+        <code>473e4346179b5006ad29837e7e5c732f9a73a9efb4c36dc54d45a09bb901c6e4</code>
+      </details>
+    </div>
+  </div>
+</header>
+
+<main>
+  <section id="before">
+    <div class="wrap">
+      <h2>開始前先確認</h2>
+      <ul class="needs">
+        <li>手機是 <b>陸版 vivo／iQOO</b>，系統為 OriginOS。作者實測環境：iQOO 15 陸版、OriginOS 7。</li>
+        <li>系統內建的 <b>「錄音機」</b> App 還在，沒有被停用。實際錄音是由它完成的。</li>
+        <li>有 <b>Wi-Fi</b> 可以連。第一次設定和重開機後恢復都要用到。</li>
+        <li><b>LINE</b> 已安裝，而且 LINE 的通知沒有關掉。</li>
+      </ul>
+      <p class="nope">不需要 Root，不需要電腦，也不用另外安裝官方 Shizuku。國際版 vivo 或其他品牌手機目前沒有測試過，不保證能用。</p>
+    </div>
+  </section>
+
+  <section id="steps">
+    <div class="wrap">
+      <h2>安裝與設定</h2>
+      <p>照順序做，做完一步就點左邊的圓圈打勾。切到設定再回來時，進度會留在這支手機上。</p>
+
+      <p class="phase">準備手機</p>
+      <p class="phase-note">這兩步只要做一次。</p>
+      <ol class="steps">
+        <li class="step">
+          <div class="head"><label class="tickwrap"><input type="checkbox" data-step="devopts" aria-label="已完成：打開「開發人員選項」"><span class="tick" aria-hidden="true">✓</span></label>
+            <div class="title"><h3>打開「開發人員選項」</h3></div></div>
+          <div class="body">
+            <p>到下面這個位置，連點「軟體版本號」7 次，再輸入鎖屏密碼：</p>
+            <span class="path">設定 › 系統管理 › 關於手機 › 版本資訊 › 軟體版本號
+              <span class="cn">陸版畫面：设置 › 系统管理 › 关于手机 › 版本信息 › 软件版本号</span></span>
+            <p>出現已進入開發者模式的提示就完成了，之後「開發人員選項」（开发者选项）會出現在「系統管理」裡。選單名稱會依系統版本不同，找不到時，直接在設定頂端搜尋「版本号」或「开发者」。</p>
+            <p class="warn">之後請不要關閉「開發人員選項」或「USB 偵錯」，否則內建的 Shizuku 會被停止，自動錄音也會跟著失效。</p>
+          </div>
+        </li>
+        <li class="step">
+          <div class="head"><label class="tickwrap"><input type="checkbox" data-step="install" aria-label="已完成：下載並安裝 App"><span class="tick" aria-hidden="true">✓</span></label>
+            <div class="title"><h3>下載並安裝 App</h3></div></div>
+          <div class="body">
+            <ol>
+              <li>用手機按上方的 <a href="#download">下載 APK</a>。</li>
+              <li>下載完成後點開檔案。如果詢問是否允許這個來源安裝應用，選「允許」。</li>
+              <li>vivo 安裝程式可能會跳出風險提示或安全檢測，選「繼續安裝」（继续安装）。</li>
+            </ol>
+            <p>如果被系統直接擋下，部分版本可以到「设置 › 安全 › 更多安全设置 › 应用安装」調整「禁止安装恶意应用」，裝完再改回來。</p>
+          </div>
+        </li>
+      </ol>
+
+      <p class="phase">App 內設定</p>
+      <p class="phase-note">打開 App，主畫面有四個按鈕，從上到下依序點。下面的標題就是按鈕上的字。</p>
+      <ol class="steps">
+        <li class="step">
+          <div class="head"><label class="tickwrap"><input type="checkbox" data-step="notify" aria-label="已完成：1. 開啟通知存取授權"><span class="tick" aria-hidden="true">✓</span></label>
+            <div class="title"><h3><span class="appbtn">1. 開啟通知存取授權</span></h3></div></div>
+          <div class="body">
+            <p>系統會打開通知使用權的清單。找到「OriginOS 陸版專用 LINE 錄音助手」，把它打開並確認允許。</p>
+            <p>App 是靠讀到 LINE 的「通話中」通知，才知道什麼時候開始、什麼時候停止錄音。</p>
+            <p class="done">回到 App，<b>通知監聽</b>顯示「已授權」就完成。</p>
+          </div>
+        </li>
+        <li class="step">
+          <div class="head"><label class="tickwrap"><input type="checkbox" data-step="shizuku" aria-label="已完成：2. 開啟內建 Shizuku（配對／啟動）"><span class="tick" aria-hidden="true">✓</span></label>
+            <div class="title"><h3><span class="appbtn">2. 開啟內建 Shizuku（配對／啟動）</span></h3>
+              <span class="hint">配對只要做一次，全程要連著 Wi-Fi</span></div></div>
+          <div class="body">
+            <ol>
+              <li>點這個按鈕，會進入 App 內建的 Shizuku。</li>
+              <li>在「透過無線偵錯啟動」底下點 <span class="ui">配對</span>。若詢問是否允許通知，請允許，等一下要從通知輸入配對碼。</li>
+              <li>到「開發人員選項 › 無線偵錯」（无线调试）。點「無線偵錯」這幾個字進入頁面，再把開關打開。只按右邊的開關不會進入頁面。系統詢問是否允許這個網路時，勾選一律允許再按確定。</li>
+              <li>在無線偵錯頁面點 <span class="ui">使用配對碼配對裝置</span>（使用配对码配对设备），畫面會出現 6 位數的配對碼。</li>
+              <li>配對碼畫面不要關。從螢幕頂端拉下通知欄，在 Shizuku 的通知上點 <span class="ui">輸入配對碼</span>，輸入那 6 位數字。</li>
+              <li>看到「配對成功」後，回到內建 Shizuku，點 <span class="ui">啟動</span>。</li>
+            </ol>
+            <p>通知欄無法輸入時，可以用分割畫面，讓 Shizuku 和無線偵錯頁面同時顯示。</p>
+            <p class="done">回到 App，<b>Shizuku 服務</b>顯示「啟動中」就完成。</p>
+          </div>
+        </li>
+        <li class="step">
+          <div class="head"><label class="tickwrap"><input type="checkbox" data-step="folder" aria-label="已完成：3. 選擇原廠錄音檔資料夾（用於改名）"><span class="tick" aria-hidden="true">✓</span></label>
+            <div class="title"><h3><span class="appbtn">3. 選擇原廠錄音檔資料夾（用於改名）</span></h3></div></div>
+          <div class="body">
+            <p>系統的資料夾選擇器會直接開到原廠錄音機存放 LINE 錄音的位置：</p>
+            <span class="path">手機儲存空間 › Recordings › Record › App › Other</span>
+            <p>確認目前在 <b>Other</b> 資料夾，點底部的「使用此資料夾」（使用此文件夹），再按「允許」。選錯資料夾的話，錄音不會被改名。</p>
+            <p class="done">回到 App，<b>改名資料夾</b>顯示 Other 的路徑就完成。</p>
+          </div>
+        </li>
+        <li class="step">
+          <div class="head"><label class="tickwrap"><input type="checkbox" data-step="a11y" aria-label="已完成：4. 開啟 LINE 聯絡人辨識輔助服務（選用）"><span class="tick" aria-hidden="true">✓</span></label>
+            <div class="title"><h3><span class="appbtn">4. 開啟 LINE 聯絡人辨識輔助服務（選用）</span></h3></div></div>
+          <div class="body">
+            <p>可以不開，不影響錄音。開了之後，檔名比較能抓到對方的 LINE 名稱，否則可能會顯示「未知聯絡人」。</p>
+            <p>點按鈕會打開「無障礙」設定，在已下載（或已安裝）的服務裡找到本 App，把它打開並同意。</p>
+          </div>
+        </li>
+      </ol>
+
+      <p class="phase">開啟自動錄音</p>
+      <ol class="steps">
+        <li class="step">
+          <div class="head"><label class="tickwrap"><input type="checkbox" data-step="enable" aria-label="已完成：啟用 LINE 自動錄音（來電及去電）"><span class="tick" aria-hidden="true">✓</span></label>
+            <div class="title"><h3><span class="appbtn">啟用 LINE 自動錄音（來電及去電）</span></h3></div></div>
+          <div class="body">
+            <p>把這個開關打開，<b>自動錄音</b>會顯示「開啟」。</p>
+            <p>再點一下 <span class="ui">允許開機恢復失敗通知</span>。如果重開機後沒有自動恢復，App 才能通知你處理。</p>
+          </div>
+        </li>
+        <li class="step">
+          <div class="head"><label class="tickwrap"><input type="checkbox" data-step="background" aria-label="已完成：允許自啟動與背景執行"><span class="tick" aria-hidden="true">✓</span></label>
+            <div class="title"><h3>允許自啟動與背景執行</h3>
+              <span class="hint">陸版系統清背景很積極，這步沒做，常常會漏錄</span></div></div>
+          <div class="body">
+            <ul>
+              <li><b>自啟動：</b>在設定頂端搜尋「自启动」，把本 App 打開。常見位置是「设置 › 应用与权限 › 权限管理 › 自启动」。</li>
+              <li><b>背景耗電：</b>在設定搜尋「后台耗电」，把本 App 設為允許後台高耗電。</li>
+              <li><b>最近任務：</b>在多工畫面把本 App 的卡片鎖定（下拉卡片或長按後選鎖定），一鍵清理時才不會被關掉。</li>
+            </ul>
+          </div>
+        </li>
+      </ol>
+
+      <p class="phase">打一通測試</p>
+      <ol class="steps">
+        <li class="step">
+          <div class="head"><label class="tickwrap"><input type="checkbox" data-step="test" aria-label="已完成：用 LINE 打一通電話"><span class="tick" aria-hidden="true">✓</span></label>
+            <div class="title"><h3>用 LINE 打一通電話</h3></div></div>
+          <div class="body">
+            <ol>
+              <li>撥給朋友，或請朋友打給你。接通、出現 LINE「通話中」的通知後，原廠錄音機會開始錄音。響鈴階段不會錄。</li>
+              <li>講幾句後掛斷。App 會在背景找到新的錄音檔並改名，不需要回到 App。</li>
+              <li>打開檔案管理，到 <b>Recordings › Record › App › Other</b>，應該會看到 <code class="f">line_</code> 開頭的新檔案。</li>
+            </ol>
+            <p>沒有成功的話，看 App 下方的「目前狀態」和「操作紀錄」，再對照下面的常見問題。</p>
+          </div>
+        </li>
+      </ol>
+    </div>
+  </section>
+
+  <section id="reboot">
+    <div class="wrap">
+      <h2>重開機之後</h2>
+      <p>重開機會把無線偵錯關掉，內建 Shizuku 也會停止。打開自動錄音後，開機第一次解鎖時，App 會在背景分批嘗試自動恢復，最長約 10 分鐘。</p>
+      <p>自動恢復需要兩個條件：手機已連上當初允許無線偵錯的那個 Wi-Fi，且 App 主畫面的 <b>開機恢復系統權限</b>顯示「已取得」。</p>
+      <p>恢復失敗時會收到「LINE 自動錄音尚未就緒」的通知。點通知會打開內建 Shizuku，確認已連上 Wi-Fi 後按 <span class="ui">啟動</span>。通常不需要重新配對。</p>
+    </div>
+  </section>
+
+  <section id="faq" class="faq">
+    <div class="wrap">
+      <h2>常見問題</h2>
+
+      <details>
+        <summary>電話接通了，卻沒有開始錄音</summary>
+        <div class="a">
+          <p>在 App 主畫面確認三項：<b>通知監聽</b>是「已授權」、<b>Shizuku 服務</b>是「啟動中」、<b>自動錄音</b>是「開啟」。有任何一項不對，回到對應步驟重做。</p>
+          <p>也要確認 LINE 的通知（包含通話通知）沒有被關掉。錄音是在「通話中」通知出現後才開始，不是響鈴時。</p>
+        </div>
+      </details>
+
+      <details>
+        <summary>Shizuku 服務突然變成「未啟動」</summary>
+        <div class="a">
+          <p>切換網路時，系統會自動關閉無線偵錯。連上 Wi-Fi 後，到內建 Shizuku 按「啟動」。如果一直顯示正在尋找無線偵錯服務，把「無線偵錯」關掉再打開一次。</p>
+        </div>
+      </details>
+
+      <details>
+        <summary>檔名顯示「未知聯絡人」</summary>
+        <div class="a">
+          <p>打開第 4 項「LINE 聯絡人辨識輔助服務」會比較準。</p>
+          <p>也可以在通話中打開 App，在「通話中的聯絡人／去電資訊」輸入對方的 LINE 暱稱，按「儲存目前這通的名稱／方向」。掛斷後才發現沒改到名，可以按「重新嘗試改名最後一筆錄音」。</p>
+        </div>
+      </details>
+
+      <details>
+        <summary>狀態寫「發現多個新音檔，無法安全判斷 LINE 錄音檔，已略過」</summary>
+        <div class="a">
+          <p>錄音期間資料夾裡同時多了好幾個新檔案，App 為了不改錯檔就先跳過了。錄音本身還在，請到 Other 資料夾手動改名。</p>
+        </div>
+      </details>
+
+      <details>
+        <summary>狀態寫「仍未發現新音檔」</summary>
+        <div class="a">
+          <p>先確認第 3 步選的是 <b>Recordings › Record › App › Other</b>。原廠錄音機也可能還在寫入檔案，稍等一下再按「重新嘗試改名最後一筆錄音」。</p>
+        </div>
+      </details>
+
+      <details>
+        <summary>資料夾選擇器裡找不到 Other 資料夾</summary>
+        <div class="a">
+          <p>可能是這支手機還沒錄過 LINE 通話。先打一通 LINE，在通話中按 App 的「開始原廠錄音（只在 LINE 通話中使用）」，再按「立即停止原廠錄音並保存」。資料夾出現後，回到第 3 步重新選擇。</p>
+        </div>
+      </details>
+
+      <details>
+        <summary>想在通話中手動開始或停止錄音</summary>
+        <div class="a">
+          <p>用 App 下方「手動控制／救援」裡的按鈕：「開始原廠錄音」只在 LINE 通話中使用；「立即停止原廠錄音並保存」可以隨時停止並保存。</p>
+        </div>
+      </details>
+
+      <details>
+        <summary>需要另外安裝 Shizuku 嗎？已經裝了會不會衝突？</summary>
+        <div class="a">
+          <p>不需要。App 內建一份獨立的 Shizuku 13.6.0，和官方 Shizuku App 分開運作，原本裝的不用移除。</p>
+        </div>
+      </details>
+
+      <details>
+        <summary>錄音會被上傳到網路嗎？</summary>
+        <div class="a">
+          <p>不會。錄音由手機原廠錄音機產生，存在手機裡；App 的操作紀錄也只存在本機。App 需要的網路權限，是讓內建 Shizuku 連到手機自己的無線偵錯服務。</p>
+        </div>
+      </details>
+
+      <details>
+        <summary>國際版 vivo 或其他品牌的手機能用嗎？</summary>
+        <div class="a">
+          <p>目前不保證。App 呼叫的是陸版 vivo 原廠錄音機的 LINE（網路電話）錄音功能，只在 iQOO 15 陸版 OriginOS 7 上實測過。</p>
+        </div>
+      </details>
+    </div>
+  </section>
+</main>
+
+<footer>
+  <div class="wrap">
+    <dl class="meta">
+      <dt>App 名稱</dt><dd>OriginOS 陸版專用 LINE 錄音助手</dd>
+      <dt>版本</dt><dd>0.11（版本代碼 11）</dd>
+      <dt>套件名稱</dt><dd><code>tw.iqoo.linerecorder</code></dd>
+      <dt>檔案大小</dt><dd>3,008,935 位元組（約 2.9 MB）</dd>
+      <dt>SHA-256</dt><dd><code>473e4346179b5006ad29837e7e5c732f9a73a9efb4c36dc54d45a09bb901c6e4</code></dd>
+    </dl>
+    <p>內含修改過的 <a href="https://github.com/RikkaApps/Shizuku">Shizuku</a> 13.6.0（RikkaApps 與貢獻者，Apache License 2.0）。授權條款隨附在 APK 內。</p>
+    <p>通話錄音請遵守所在地的法律，並尊重通話對象的隱私。</p>
+    <p><a href="https://github.com/steve19860004/linecallreecorder-apk">GitHub 專案頁面</a></p>
+  </div>
+</footer>
+
+<script>
+(function () {
+  var KEY = 'olr-v011-steps';
+  var boxes = Array.prototype.slice.call(document.querySelectorAll('input[data-step]'));
+  var text = document.getElementById('progress-text');
+  var fill = document.getElementById('progress-fill');
+  var saved = {};
+  try { saved = JSON.parse(localStorage.getItem(KEY) || '{}') || {}; } catch (e) { saved = {}; }
+
+  function update() {
+    var n = boxes.filter(function (b) { return b.checked; }).length;
+    text.textContent = n === boxes.length ? '全部完成' : '安裝進度 ' + n + ' / ' + boxes.length;
+    fill.style.width = (n / boxes.length * 100) + '%';
+  }
+
+  boxes.forEach(function (b) {
+    b.checked = !!saved[b.dataset.step];
+    b.addEventListener('change', function () {
+      saved[b.dataset.step] = b.checked;
+      try { localStorage.setItem(KEY, JSON.stringify(saved)); } catch (e) {}
+      update();
+    });
+  });
+  update();
+})();
+</script>
+</body>
+</html>
