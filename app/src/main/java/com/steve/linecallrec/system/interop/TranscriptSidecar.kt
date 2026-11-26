@@ -1,0 +1,167 @@
+/*
+ * CallVault: FOSS call recording, self-contained over embedded ADB
+ *  Copyright (C) 2026-present The CallVault Authors
+ *  This software is licensed under the GNU General Public License v3 or later, with additional terms as permitted under Section 7.
+ *  The full license text is available in the LICENSE file at the root of this project.
+ *  This software is distributed WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+ */
+
+package com.steve.linecallrec.system.interop
+
+import android.content.Context
+import androidx.documentfile.provider.DocumentFile
+import com.steve.linecallrec.R
+import com.steve.linecallrec.data.AppPreferences
+import com.steve.linecallrec.data.recordings.RecordingCatalog
+import com.steve.linecallrec.data.transcripts.LibraryText
+import com.steve.linecallrec.data.transcripts.export.ExportLabels
+import com.steve.linecallrec.data.transcripts.export.TranscriptExport
+import com.steve.linecallrec.data.transcripts.export.TranscriptFormat
+import com.steve.linecallrec.data.waveform.RecordingExtrasRepository
+import com.steve.linecallrec.utils.AppLogger
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.yield
+import kotlin.coroutines.cancellation.CancellationException
+
+/**
+ * Writes a recording's transcript + notes (+ summary) as a `.md` file beside the audio, in the user's
+ * recording folder, so copying the folder to a PC carries the text along with the audio.
+ *
+ * Opt-in and off by default ([AppPreferences.isWriteTranscriptSidecarEnabled]): it puts a second file
+ * in the user's folder, and writing transcripts out is a privacy choice, so it waits to be asked.
+ *
+ * The sidecar is named like the audio with a `.md` extension (`call_in_….ogg` → `call_in_….md`), reusing
+ * the app's own transcript renderer, so the file reads exactly like the on-screen transcript/notes. It is
+ * rewritten when a transcript completes or a note is saved, removed when the recording is deleted (see
+ * [com.steve.linecallrec.data.recordings.RecordingsRepository.deleteRecording]), and never throws — a backup
+ * convenience must not turn a successful recording into a failed one.
+ */
+object TranscriptSidecar {
+
+    private const val TAG = "CV:TranscriptSidecar"
+    private val FORMAT = TranscriptFormat.MARKDOWN
+
+    /** The audio file's name with its extension replaced by the sidecar's (`.md`). */
+    fun sidecarNameFor(audioName: String): String =
+        audioName.substringBeforeLast('.', audioName) + "." + FORMAT.extension
+
+    /**
+     * Writes the sidecar for [displayName], or removes it when there is nothing (no transcript, summary
+     * or note) to write. No-op when the setting is off. Never throws.
+     */
+    suspend fun writeOrClear(
+        context: Context,
+        displayName: String,
+        clearWhenEmpty: Boolean = true,
+        index: FolderIndex? = null,
+    ) {
+        // A sidecar's own name maps to itself, so replacing it would delete the file we mean to keep.
+        if (isSidecarName(displayName)) return
+        val prefs = AppPreferences(context)
+        if (!prefs.isWriteTranscriptSidecarEnabled()) return
+        val folderUri = prefs.getRecordingFolderUri()
+        if (folderUri == null) {
+            AppLogger.w(TAG, "No recording folder; not writing a transcript sidecar for '$displayName'.")
+            return
+        }
+        runCatching {
+            val content = buildContent(context, displayName)
+            // The backfill passes clearWhenEmpty=false: with nothing to write there is nothing to replace,
+            // and the folder lookup below is a provider round trip per recording.
+            if (content.isNullOrBlank() && !clearWhenEmpty) return@runCatching
+            val folder = index?.folder ?: DocumentFile.fromTreeUri(context, folderUri)
+                ?: error("folder $folderUri could not be opened")
+            val name = sidecarNameFor(displayName)
+            // Replace rather than accumulate "name (1).md"; this also removes a stale sidecar when the
+            // transcript/note has been emptied (content is then null and we stop here).
+            // findFile lists the whole folder on every call (about 18 s on a 3,000-file folder on an
+            // HONOR phone), so a pass over many recordings brings an index listed once.
+            (if (index != null) index.remove(name) else folder.findFile(name))?.delete()
+            if (content.isNullOrBlank()) {
+                AppLogger.d(TAG, "Nothing to write for '$displayName'; sidecar left absent.")
+                return@runCatching
+            }
+            val doc = folder.createFile(FORMAT.mimeType, name) ?: error("could not create $name")
+            index?.put(name, doc)
+            context.contentResolver.openOutputStream(doc.uri)?.use { it.write(content.toByteArray()) }
+                ?: error("could not open $name for writing")
+            AppLogger.i(TAG, "Wrote transcript sidecar '$name'.")
+        }.onFailure {
+            // A cancelled job must stop, not log a warning per remaining recording.
+            if (it is CancellationException) throw it
+            AppLogger.w(TAG, "Could not write the transcript sidecar for '$displayName': ${it.message}")
+        }
+    }
+
+    /** True for a name that is itself a sidecar, so the backfill never treats it as a recording. */
+    fun isSidecarName(name: String): Boolean = name.endsWith("." + FORMAT.extension, ignoreCase = true)
+
+    /**
+     * Best-effort pass to write a sidecar for every recording that has a transcript or a note — used when
+     * the setting is first turned on, so existing text is backed up too. No-op when the setting is off.
+     */
+    suspend fun backfillAll(context: Context) {
+        if (!AppPreferences(context).isWriteTranscriptSidecarEnabled()) return
+        runCatching {
+            // One listing of the folder for the whole pass, instead of one per recording. Null when the
+            // folder cannot be listed: each write then falls back to its own lookup.
+            val index = AppPreferences(context).getRecordingFolderUri()?.let { uri ->
+                runCatching {
+                    DocumentFile.fromTreeUri(context, uri)?.let { FolderIndex(it, it.listFiles().toList()) }
+                }.getOrNull()
+            }
+            RecordingCatalog.all(context).forEach { entry ->
+                if (isSidecarName(entry.displayName)) return@forEach
+                writeOrClear(context, entry.displayName, clearWhenEmpty = false, index = index)
+                yield()
+            }
+            AppLogger.i(TAG, "Transcript sidecar backfill finished.")
+        }.onFailure {
+            // Let a cancelled pass reach the worker, so it is retried rather than reported as finished.
+            if (it is CancellationException) throw it
+            AppLogger.w(TAG, "Transcript sidecar backfill failed: ${it.message}")
+        }
+    }
+
+    /**
+     * The folder's files by name, listed once. [DocumentFile.findFile] lists the whole folder on every
+     * call, which a pass over thousands of recordings cannot afford (BabApps item 6).
+     */
+    class FolderIndex(val folder: DocumentFile, files: List<DocumentFile>) {
+        private val byName = HashMap<String, DocumentFile>()
+        init { files.forEach { f -> f.name?.let { byName[it] = f } } }
+        fun remove(name: String): DocumentFile? = byName.remove(name)
+        fun put(name: String, doc: DocumentFile) { byName[name] = doc }
+        fun contains(name: String): Boolean = name in byName
+    }
+
+    /** The rendered transcript + notes (+ summary), or null when the recording has none of them. */
+    private suspend fun buildContent(context: Context, displayName: String): String? {
+        val title = displayName.substringBeforeLast('.', displayName)
+        val labels = labelsFor(context)
+        // exportDocument already folds in the note (and summary) when a transcript or summary exists.
+        val doc = LibraryText.exportDocument(context, displayName, title, speakerNames = null)
+        if (doc != null) return TranscriptExport.render(FORMAT, doc, labels).takeIf { it.isNotBlank() }
+        // Note-only recording (no transcript, no summary): still worth a small notes file.
+        val note = RecordingExtrasRepository.note(context, displayName).first()
+        if (note.isBlank()) return null
+        return buildString {
+            append("# ").append(title).append("\n\n")
+            append("## ").append(labels.notes).append("\n\n")
+            append(note).append("\n")
+        }
+    }
+
+    /** The same export headings [com.steve.linecallrec.ui.common.rememberExportLabels] builds, but off the UI thread. */
+    private fun labelsFor(context: Context): ExportLabels = ExportLabels(
+        summary = context.getString(R.string.summary_card_title),
+        notes = context.getString(R.string.playback_note_title),
+        transcript = context.getString(R.string.export_heading_transcript),
+        keyPoints = context.getString(R.string.summary_card_key_points),
+        decisions = context.getString(R.string.summary_card_decisions),
+        actionItems = context.getString(R.string.summary_card_actions),
+        keyFacts = context.getString(R.string.summary_card_facts),
+        language = context.getString(R.string.transcription_language_label),
+        model = context.getString(R.string.transcription_model_label),
+    )
+}
