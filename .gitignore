@@ -20,3 +20,8 @@ docs/superpowers/
 # Native (CMake/NDK) build cache
 .cxx/
 app/.cxx/
+
+*.keystore
+*.jks
+signing.properties
+local.properties

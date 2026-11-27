@@ -181,17 +181,18 @@ android {
     // (cert c875ffd0…), preserved here so `assembleRelease` produces a NON-debuggable APK that
     // existing installs can still update over in place. Guard/back this file up — losing it means
     // no more in-place updates for existing users, ever.
-    val localReleaseKeystore = rootProject.file("signing/callvault-signing.keystore")
-
     signingConfigs {
-        // 固定簽章：提交在 repo 的 keystore，push 到 GitHub Actions 就能編譯，不需任何 secret。
-        create("fixed") {
-            storeFile = localReleaseKeystore
-            storePassword = "android"
-            keyAlias = "androiddebugkey"
-            keyPassword = "android"
-            enableV1Signing = true
-            enableV2Signing = true
+        // 正式簽章由環境變數提供（CI 從 GitHub Secret 解出），密碼不寫進 repo。
+        create("release") {
+            val kf = System.getenv("SIGNING_KEYSTORE_FILE")
+            if (kf != null && file(kf).exists()) {
+                storeFile = file(kf)
+                storePassword = System.getenv("SIGNING_STORE_PASSWORD")
+                keyAlias = System.getenv("SIGNING_KEY_ALIAS")
+                keyPassword = System.getenv("SIGNING_KEY_PASSWORD")
+                enableV1Signing = true
+                enableV2Signing = true
+            }
         }
     }
     buildTypes {
@@ -209,7 +210,8 @@ android {
             )
             // release build type defaults to debuggable=false — the whole point of shipping this
             // instead of assembleDebug. Sign with the CI key on CI, else the local release keystore.
-            signingConfig = signingConfigs.getByName("fixed")
+            signingConfig = if (System.getenv("SIGNING_KEYSTORE_FILE") != null)
+                signingConfigs.getByName("release") else signingConfigs.getByName("debug")
         }
 
         // Opt-in isolation for instrumented runs: -PisolateTestApp
